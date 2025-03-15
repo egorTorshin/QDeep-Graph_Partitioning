@@ -16,7 +16,7 @@
 import networkx as nx
 from collections import defaultdict
 from itertools import combinations
-from dwave.system.samplers import DWaveSampler
+from neal import SimulatedAnnealingSampler
 from dwave.system.composites import EmbeddingComposite
 import math
 
@@ -52,7 +52,7 @@ for i, j in combinations(G.nodes, 2):
 chain_strength = gamma*len(G.nodes)
 
 # Run the QUBO on the solver from your config file
-sampler = EmbeddingComposite(DWaveSampler())
+sampler = SimulatedAnnealingSampler()
 response = sampler.sample_qubo(Q,
                                chain_strength=chain_strength,
                                num_reads=num_reads,
