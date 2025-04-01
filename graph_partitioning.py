@@ -54,7 +54,7 @@ chain_strength = gamma * len(G.nodes)
 
 # Run our QUBO on the QPU using the new API.
 solver = QDeepHybridSolver()
-solver.token = "mtagdfsplb"
+solver.token = "your_token"
 response = solver.solve(Q_array)
 
 # Extract the best sample solution from the response.
