@@ -12,60 +12,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ------ Import necessary packages ----
 import networkx as nx
 from collections import defaultdict
 from itertools import combinations
-from neal import SimulatedAnnealingSampler
-from dwave.system.composites import EmbeddingComposite
+from qdeepsdk import QDeepHybridSolver
 import math
+import numpy as np
 
-# ------- Set tunable parameters -------
+# Set tunable parameters
 num_reads = 1000
 gamma = 80
 
-# ------- Set up our graph -------
+# Set up our graph
 G = nx.gnp_random_graph(40, 0.2)
+print("Graph on {} nodes created with {} out of {} possible edges.".format(
+    len(G.nodes), len(G.edges), len(G.nodes) * (len(G.nodes) - 1) / 2))
 
-print("Graph on {} nodes created with {} out of {} possible edges.".format(len(G.nodes), len(G.edges), len(G.nodes) * (len(G.nodes)-1) / 2))
-
-# ------- Set up our QUBO dictionary -------
-
-# Initialize our Q matrix
+# Set up our QUBO dictionary
 Q = defaultdict(int)
 
-# Fill in Q matrix
+# Fill in Q matrix based on the graph structure
 for u, v in G.edges:
-    Q[(u,u)] += 1
-    Q[(v,v)] += 1
-    Q[(u,v)] += -2
+    Q[(u, u)] += 1
+    Q[(v, v)] += 1
+    Q[(u, v)] += -2
 
 for i in G.nodes:
-    Q[(i,i)] += gamma*(1-len(G.nodes))
+    Q[(i, i)] += gamma * (1 - len(G.nodes))
 
 for i, j in combinations(G.nodes, 2):
-	Q[(i,j)] += 2*gamma
+    Q[(i, j)] += 2 * gamma
 
-# ------- Run our QUBO on the QPU -------
+# Convert QUBO dictionary to a numpy array.
+n = len(G.nodes)
+Q_array = np.zeros((n, n))
+for (i, j), value in Q.items():
+    Q_array[i, j] = value
 
-# Set chain strength
-chain_strength = gamma*len(G.nodes)
+# Set chain strength (if needed by your problem formulation)
+chain_strength = gamma * len(G.nodes)
 
-# Run the QUBO on the solver from your config file
-sampler = SimulatedAnnealingSampler()
-response = sampler.sample_qubo(Q,
-                               chain_strength=chain_strength,
-                               num_reads=num_reads,
-                               label='Example - Graph Partitioning')
+# Run our QUBO on the QPU using the new API.
+solver = QDeepHybridSolver()
+solver.token = "mtagdfsplb"
+response = solver.solve(Q_array)
 
-# See if the best solution found is feasible, and if so print the number of cut edges.
-sample = response.record.sample[0]
+# Extract the best sample solution from the response.
+# The response is a dictionary with key 'QdeepHybridSolver' containing a 'configuration' list.
+sample = response['QdeepHybridSolver']['configuration']
 
-# In the case when n is odd, the set may have one more or one fewer nodes
-if sum(sample) in [math.floor(len(G.nodes)/2), math.ceil(len(G.nodes)/2)]:
+# Check if the best solution found is feasible (balanced partition) and count the cut edges.
+if sum(sample) in [math.floor(len(G.nodes) / 2), math.ceil(len(G.nodes) / 2)]:
     num_cut_edges = 0
     for u, v in G.edges:
-        num_cut_edges += sample[u] + sample[v] - 2*sample[u]*sample[v]
+        num_cut_edges += sample[u] + sample[v] - 2 * sample[u] * sample[v]
     print("Valid partition found with", num_cut_edges, "cut edges.")
 else:
     print("Invalid partition.")
